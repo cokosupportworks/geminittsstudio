@@ -322,12 +322,12 @@
                             generationConfig: { 
                                 responseModalities: ["AUDIO"], 
                                 speechConfig: { 
-                                    voiceConfig: { 
-                                        prebuiltVoiceConfig: { 
-                                            // 最初のデフォルトボイス。タグがあれば上書きされる
-                                            voiceName: "Kore" 
-                                        } 
-                                    } 
+                                    multiSpeakerVoiceConfig: { 
+                                        speakerVoiceConfigs: ALL_SPEAKERS.map(s => ({
+                                            speaker: s.voice,
+                                            voiceConfig: { prebuiltVoiceConfig: { voiceName: s.voice } }
+                                        }))
+                                    }
                                 } 
                             }
                         }),
