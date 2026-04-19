@@ -637,7 +637,21 @@
                                     <h2 className="text-2xl font-black text-gray-800 mb-8 flex items-center gap-2"><Icon name="settings" className="text-blue-600"/> アプリ設定</h2>
                                     <div className="space-y-8 max-w-2xl">
                                         <div className="bg-blue-50 p-6 rounded-2xl border-2 border-blue-100">
-                                            <label className="text-lg font-black text-blue-800 block mb-2">Gemini API キー</label>
+                                            <div className="flex justify-between items-end mb-2">
+                                                <label className="text-lg font-black text-blue-800">Gemini API キー</label>
+                                                <a 
+                                                    href="https://aistudio.google.com/app/apikey" 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-white px-3 py-1.5 rounded-lg border border-blue-200 shadow-sm transition-colors active:scale-95"
+                                                >
+                                                    {userApiKey ? (
+                                                        <><Icon name="external-link" size={14}/> キーを確認・再コピー</>
+                                                    ) : (
+                                                        <><Icon name="plus-circle" size={14}/> 新規取得 (無料)</>
+                                                    )}
+                                                </a>
+                                            </div>
                                             <div className="flex gap-2">
                                                 <input type={showApiKey ? "text" : "password"} value={userApiKey} onChange={e => setUserApiKey(e.target.value)} className="flex-1 p-4 rounded-xl border-2 border-blue-200 font-mono font-bold outline-none focus:border-blue-500 shadow-inner" placeholder="AI Studioのキーを入力..." />
                                                 <button onClick={() => setShowApiKey(!showApiKey)} className="px-6 bg-white border-2 border-blue-200 rounded-xl hover:bg-gray-50 transition-colors"><Icon name={showApiKey ? "eye-off" : "eye"} /></button>
