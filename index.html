@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Gemini TTS Studio</title>
+    <title>ぺちゃら - Gemini TTS Studio</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & ReactDOM -->
@@ -14,7 +14,7 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@800;900&family=Noto+Sans+JP:wght@400;700;900&display=swap');
         body {
             margin: 0;
             padding: 0;
@@ -41,16 +41,36 @@
             color: #9ca3af;
             cursor: text;
         }
+        
+        /* 改善・強化されたバッジスタイル */
         .tts-badge {
-            user-select: none;
-            -webkit-user-select: none;
-            cursor: grab;
-            display: inline-flex;
-            align-items: center;
+            display: inline-block; /* flexによる予期せぬ分割を防止 */
             vertical-align: baseline;
             margin: 0 4px;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 700;
+            border-width: 1px;
+            border-style: solid;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            white-space: nowrap; /* 絶対に文字と×ボタンを分離・改行させない */
+            cursor: default;
         }
-        .tts-badge:active { cursor: grabbing; }
+        .tts-badge > span.label-text {
+            pointer-events: none; /* ラベル部分のクリックを無効化 */
+        }
+        .tts-badge > span.delete-badge {
+            pointer-events: auto; /* ×ボタンのみクリック許可 */
+            margin-left: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            opacity: 0.5;
+            padding: 0 2px;
+        }
+        .tts-badge > span.delete-badge:hover {
+            opacity: 1;
+        }
         
         input {
             user-select: text !important;
@@ -100,7 +120,7 @@
         const STORAGE_KEY_LOGS = "gemini_tts_usage_logs_v3";
         const STORAGE_KEY_SETTINGS = "gemini_tts_app_settings_v3";
 
-        // 全30種類の音声モデルリスト
+        // 全30種類の音声モデルリスト（Zephyrの性別を修正）
         const ALL_SPEAKERS = [
             // 女性音声
             { voice: "Kore", label: "👩Kore（標準・落ち着き）" },
@@ -114,8 +134,8 @@
             { voice: "Pulcherrima", label: "👩Pulcherrima（華やか）" },
             { voice: "Vindemiatrix", label: "👩Vindemiatrix（知性的）" },
             { voice: "Schedar", label: "👩Schedar（包容力）" },
+            { voice: "Zephyr", label: "👩Zephyr（軽快・爽やか）" }, // 修正：男性から女性へ移動
             // 男性音声
-            { voice: "Zephyr", label: "👨Zephyr（軽快・爽やか）" },
             { voice: "Puck", label: "👨Puck（アップビート）" },
             { voice: "Charon", label: "👨Charon（深い・低音）" },
             { voice: "Fenrir", label: "👨Fenrir（力強く野生味）" },
@@ -136,14 +156,15 @@
             { voice: "Sulafat", label: "👨Sulafat（穏やかな低音）" },
         ];
 
+        // 誤読防止：タグの実体を英語指示から日本語の「ト書き」に変更
         const STYLE_TAGS = [
-            { label: "✨明るく", tag: "Say cheerfully: ", color: "bg-yellow-100 border-yellow-300 text-yellow-800" },
-            { label: "🤫ささやき", tag: "Say in a whisper: ", color: "bg-purple-100 border-purple-300 text-purple-800" },
-            { label: "⚡興奮", tag: "Say excitedly: ", color: "bg-orange-100 border-orange-300 text-orange-800" },
-            { label: "🌧悲しみ", tag: "Say sadly: ", color: "bg-blue-100 border-blue-300 text-blue-800" },
-            { label: "🛡厳格", tag: "Say sternly: ", color: "bg-red-100 border-red-300 text-red-800" },
-            { label: "🐇速く", tag: "Say fast: ", color: "bg-green-100 border-green-300 text-green-800" },
-            { label: "🐌ゆっくり", tag: "Say slowly: ", color: "bg-stone-100 border-stone-300 text-stone-800" },
+            { label: "✨明るく", tag: "（明るく）", colorClasses: "bg-yellow-100 border-yellow-300 text-yellow-800" },
+            { label: "🤫ささやき", tag: "（ささやき声で）", colorClasses: "bg-purple-100 border-purple-300 text-purple-800" },
+            { label: "⚡興奮", tag: "（興奮して）", colorClasses: "bg-orange-100 border-orange-300 text-orange-800" },
+            { label: "🌧悲しみ", tag: "（悲しそうに）", colorClasses: "bg-blue-100 border-blue-300 text-blue-800" },
+            { label: "🛡厳格", tag: "（厳格に）", colorClasses: "bg-red-100 border-red-300 text-red-800" },
+            { label: "🐇速く", tag: "（早口で）", colorClasses: "bg-green-100 border-green-300 text-green-800" },
+            { label: "🐌ゆっくり", tag: "（ゆっくりと）", colorClasses: "bg-stone-100 border-stone-300 text-stone-800" },
         ];
 
         const App = () => {
@@ -153,6 +174,7 @@
             const [model, setModel] = useState("gemini-2.5-flash-preview-tts");
             const [isProcessing, setIsProcessing] = useState(false);
             const [audioUrl, setAudioUrl] = useState(null);
+            const [audioFileName, setAudioFileName] = useState("voice.wav");
             const [usage, setUsage] = useState({ rpm: 0, rpd: 0 });
             const [countdown, setCountdown] = useState(0);
             const [logs, setLogs] = useState([]);
@@ -165,7 +187,6 @@
             const abortControllerRef = useRef(null);
             const savedRangeRef = useRef(null);
 
-            // Load Data
             useEffect(() => {
                 try {
                     const savedLogs = localStorage.getItem(STORAGE_KEY_LOGS);
@@ -182,7 +203,6 @@
                 } catch (e) { console.error("Load failed", e); }
             }, []);
 
-            // Save Logs
             useEffect(() => { 
                 try { localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(logs)); } catch(e) {}
             }, [logs]);
@@ -218,7 +238,6 @@
                 return () => clearInterval(interval);
             }, [logs, countdown]);
 
-            // Save Selection for ContentEditable
             const saveSelection = useCallback(() => {
                 const sel = window.getSelection();
                 if (sel.rangeCount > 0 && editorRef.current?.contains(sel.getRangeAt(0).commonAncestorContainer)) {
@@ -226,7 +245,11 @@
                 }
             }, []);
 
-            // Insert HTML Badge into Editor
+            // 強固なバッジHTMLを生成
+            const createBadgeHTML = (label, tag, colorClasses) => {
+                return `<span class="tts-badge ${colorClasses}" contenteditable="false" data-tag="${tag}"><span class="label-text">${label}</span><span class="delete-badge" title="削除">&times;</span></span>`;
+            };
+
             const insertBadge = (html) => {
                 if (editorRef.current) {
                     editorRef.current.focus();
@@ -241,23 +264,20 @@
                 }
             };
 
-            const createBadgeHTML = (label, tag, colorClass) => {
-                // Generate a robust HTML structure for the badge
-                return `<span class="tts-badge ${colorClass} border px-2 py-1 rounded-lg text-sm font-black shadow-sm" contenteditable="false" data-tag="${tag}" draggable="true">${label}<span class="delete-badge ml-2 text-red-500 hover:text-red-700 cursor-pointer text-lg leading-none" title="削除">&times;</span></span>`;
-            };
-
+            // 修正：×ボタンの確実なクリック削除処理
             const handleEditorClick = (e) => {
-                // Delete badge if 'X' is clicked
-                if (e.target.classList.contains('delete-badge')) {
+                // クリックされたのがdelete-badge、またはその子要素か確認
+                if (e.target.classList.contains('delete-badge') || e.target.closest('.delete-badge')) {
                     const badge = e.target.closest('.tts-badge');
                     if (badge) {
                         badge.remove();
                         saveSettingsToStorage();
+                        if (editorRef.current) editorRef.current.focus();
                     }
                 }
             };
 
-            // Extract text including badge data
+            // 修正：DOMツリーを再帰的にパースし、余計な改行やテキスト混入を防ぐ
             const extractTextForApi = () => {
                 if (!editorRef.current) return "";
                 const parseNode = (n) => {
@@ -266,8 +286,8 @@
                         txt += n.nodeValue;
                     } else if (n.nodeType === Node.ELEMENT_NODE) {
                         if (n.classList.contains('tts-badge')) {
-                            txt += n.getAttribute('data-tag');
-                            return txt; // Don't parse inside badge
+                            // バッジの中身（ラベルや×ボタン）は無視して、data-tagだけを抽出
+                            return n.getAttribute('data-tag'); 
                         }
                         if (n.nodeName === 'BR') txt += '\n';
                         for (let child of n.childNodes) {
@@ -278,6 +298,17 @@
                     return txt;
                 };
                 return parseNode(editorRef.current).replace(/\n\n+/g, '\n').trim();
+            };
+
+            // 修正：ファイル名抽出。ト書きや空白を除去して最初の15文字を取得
+            const generateFileName = (rawText) => {
+                let cleanText = rawText.replace(/[a-zA-Z]+:\s*/g, '').replace(/（.*?）/g, ''); 
+                cleanText = cleanText.replace(/[\s\n\r]/g, ''); 
+                if (cleanText.length > 15) {
+                    cleanText = cleanText.substring(0, 15);
+                }
+                if (!cleanText) cleanText = "voice";
+                return `${cleanText}.wav`;
             };
 
             const pcmToWav = (pcmData, sampleRate) => {
@@ -308,7 +339,41 @@
                 const extractedText = extractTextForApi();
                 if (!extractedText) { setModal({ title: "空の入力", message: "読み上げる文章を入力してください。" }); return; }
                 
-                saveSettingsToStorage(); // Save current editor state
+                saveSettingsToStorage(); 
+                
+                const usedSpeakerVoices = ALL_SPEAKERS.map(s => s.voice).filter(voice => extractedText.includes(voice + ":"));
+                const uniqueVoices = [...new Set(usedSpeakerVoices)];
+                
+                let speechConfigObj = {};
+                let finalApiText = extractedText;
+                
+                if (uniqueVoices.length === 0) {
+                    speechConfigObj = {
+                        voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } }
+                    };
+                } else if (uniqueVoices.length === 1) {
+                    speechConfigObj = {
+                        voiceConfig: { prebuiltVoiceConfig: { voiceName: uniqueVoices[0] } }
+                    };
+                    const regex = new RegExp(`${uniqueVoices[0]}:\\s*`, 'g');
+                    finalApiText = finalApiText.replace(regex, '');
+                } else if (uniqueVoices.length === 2) {
+                    speechConfigObj = {
+                        multiSpeakerVoiceConfig: {
+                            speakerVoiceConfigs: uniqueVoices.map(voice => ({
+                                speaker: voice,
+                                voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } }
+                            }))
+                        }
+                    };
+                } else {
+                    setModal({ 
+                        title: "話者数オーバー", 
+                        message: "現在のAPIの仕様上、1つの文章内で対話できる話者は「最大2名」までです。文章内の話者を2名以内に減らしてください。" 
+                    });
+                    return;
+                }
+                
                 setIsProcessing(true);
                 setServerStatus("Online");
                 abortControllerRef.current = new AbortController();
@@ -318,27 +383,27 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            contents: [{ parts: [{ text: extractedText }] }],
+                            contents: [{ parts: [{ text: finalApiText }] }],
                             generationConfig: { 
                                 responseModalities: ["AUDIO"], 
-                                speechConfig: { 
-                                    multiSpeakerVoiceConfig: { 
-                                        speakerVoiceConfigs: ALL_SPEAKERS.map(s => ({
-                                            speaker: s.voice,
-                                            voiceConfig: { prebuiltVoiceConfig: { voiceName: s.voice } }
-                                        }))
-                                    }
-                                } 
-                            }
+                                speechConfig: speechConfigObj 
+                            },
+                            model: model 
                         }),
                         signal: abortControllerRef.current.signal
                     });
 
                     if (!response.ok) {
                         const err = await response.json();
-                        if (response.status === 429) setServerStatus("Quota Exceeded");
                         let errorMsg = err.error?.message || "リクエスト失敗";
-                        if (errorMsg.toLowerCase().includes("internal error") || response.status >= 500) {
+                        
+                        if (response.status === 429) {
+                            setServerStatus("Quota Exceeded");
+                            // エラー文から「Please retry in 〇〇s」の秒数を抽出
+                            const match = errorMsg.match(/Please retry in ([\d\.]+)s/);
+                            const retrySec = match ? Math.ceil(parseFloat(match[1])) : 30;
+                            errorMsg = `1分間の利用制限（10回）に達しました。\n約 ${retrySec} 秒待ってから、もう一度お試しください。`;
+                        } else if (errorMsg.toLowerCase().includes("internal error") || response.status >= 500) {
                             errorMsg = "AIサーバー内部でエラーが発生しました。特定のタグの組み合わせや記号が原因の可能性があります。文章を少し修正して再試行してください。";
                         }
                         throw new Error(errorMsg);
@@ -357,6 +422,7 @@
                         const blob = pcmToWav(pcm, rate);
                         if (audioUrl) URL.revokeObjectURL(audioUrl);
                         setAudioUrl(URL.createObjectURL(blob));
+                        setAudioFileName(generateFileName(extractedText));
                         setLogs(prev => [...prev, { time: Date.now() }]);
                         setCountdown(8);
                     } else {
@@ -396,9 +462,14 @@
 
                         {/* Header */}
                         <header className="h-16 bg-blue-600 flex items-center justify-between px-6 text-white shadow-md flex-shrink-0 z-10">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-white p-1.5 rounded-lg"><Icon name="mic" className="text-blue-600" /></div>
-                                <h1 className="text-2xl font-black tracking-tight">Gemini TTS Studio</h1>
+                            <div className="flex items-center gap-4">
+                                <div className="bg-white p-2 rounded-2xl shadow-sm transform -rotate-12">
+                                    <Icon name="mic" className="text-blue-500" size={26} />
+                                </div>
+                                <div className="flex items-baseline gap-3">
+                                    <h1 className="text-3xl font-black tracking-tighter" style={{ fontFamily: "'M PLUS Rounded 1c', sans-serif" }}>ぺちゃら</h1>
+                                    <span className="text-[10px] font-bold text-blue-200 tracking-widest uppercase">Gemini TTS Studio v1.0</span>
+                                </div>
                             </div>
                             <nav className="flex gap-2">
                                 <button onClick={() => setActiveTab('editor')} className={`px-6 py-2 rounded-full font-black ${activeTab === 'editor' ? 'bg-white text-blue-600' : 'hover:bg-blue-500'}`}>エディタ</button>
@@ -434,7 +505,7 @@
                                             ></div>
                                         </div>
 
-                                        {/* Tags Tray (Wider area) */}
+                                        {/* Tags Tray */}
                                         <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 h-56 flex flex-col gap-3 shrink-0 overflow-hidden">
                                             <div className="flex-1 overflow-y-auto pr-2 space-y-4">
                                                 {/* 表情タグ */}
@@ -444,8 +515,8 @@
                                                         {STYLE_TAGS.map((s, i) => (
                                                             <button 
                                                                 key={i} 
-                                                                onClick={() => insertBadge(createBadgeHTML(s.label, s.tag, s.color))} 
-                                                                className={`${s.color} border-2 px-3 py-1.5 rounded-xl text-sm font-black shadow-sm transition-transform active:scale-95`}
+                                                                onClick={() => insertBadge(createBadgeHTML(s.label, s.tag, s.colorClasses))} 
+                                                                className={`${s.colorClasses} border px-3 py-1.5 rounded-xl text-sm font-black shadow-sm transition-transform active:scale-95`}
                                                             >
                                                                 {s.label}
                                                             </button>
@@ -481,7 +552,7 @@
                                     {/* RIGHT PANEL (Action & Status) */}
                                     <div className="w-80 flex flex-col gap-4 shrink-0">
                                         
-                                        {/* Generate Button moved here */}
+                                        {/* Generate Button */}
                                         <button 
                                             onClick={generateSpeech} 
                                             disabled={countdown > 0 || isProcessing} 
@@ -497,8 +568,8 @@
                                                 <div className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${serverStatus === 'Online' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{serverStatus}</div>
                                             </div>
                                             <div className="mb-3">
-                                                <div className="flex justify-between text-[9px] font-black text-gray-400 mb-1"><span>RPM (分間)</span><span>{usage.rpm}/15</span></div>
-                                                <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden"><div className="h-full bg-blue-500 transition-all rounded-full" style={{width: `${Math.min(100, (usage.rpm/15)*100)}%`}}></div></div>
+                                                <div className="flex justify-between text-[9px] font-black text-gray-400 mb-1"><span>RPM (分間)</span><span>{usage.rpm}/10</span></div>
+                                                <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden"><div className="h-full bg-blue-500 transition-all rounded-full" style={{width: `${Math.min(100, (usage.rpm/10)*100)}%`}}></div></div>
                                             </div>
                                             <div>
                                                 <div className="flex justify-between text-[9px] font-black text-gray-400 mb-1"><span>RPD (日間)</span><span>{usage.rpd}/1500</span></div>
@@ -515,7 +586,7 @@
                                                     <div className="w-full flex flex-col items-center gap-4">
                                                         <div className="w-20 h-20 rounded-full bg-green-100 text-green-600 flex items-center justify-center shadow-inner"><Icon name="check" size={40} /></div>
                                                         <audio src={audioUrl} controls className="w-full h-10" />
-                                                        <button onClick={() => { const a = document.createElement('a'); a.href = audioUrl; a.download = `voice_${Date.now()}.wav`; a.click(); }} className="w-full py-3 bg-green-600 text-white rounded-xl font-black text-lg flex items-center justify-center gap-2 shadow-md hover:bg-green-700 active:scale-95"><Icon name="download" size={20} /> WAV保存</button>
+                                                        <button onClick={() => { const a = document.createElement('a'); a.href = audioUrl; a.download = audioFileName; a.click(); }} className="w-full py-3 bg-green-600 text-white rounded-xl font-black text-lg flex items-center justify-center gap-2 shadow-md hover:bg-green-700 active:scale-95"><Icon name="download" size={20} /> WAV保存</button>
                                                     </div>
                                                 ) : (
                                                     <div className="text-center">
