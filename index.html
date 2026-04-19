@@ -188,6 +188,7 @@
             const [modal, setModal] = useState(null);
             const [activeTab, setActiveTab] = useState('editor');
             const [serverStatus, setServerStatus] = useState("Online");
+            const [isPortrait, setIsPortrait] = useState(false); // 追加：縦横判定ステート
 
             const containerRef = useRef(null);
             const editorRef = useRef(null);
@@ -224,7 +225,10 @@
             };
 
             const handleResize = useCallback(() => {
-                const s = Math.min(window.innerWidth / BASE_WIDTH, window.innerHeight / BASE_HEIGHT);
+                const w = window.innerWidth;
+                const h = window.innerHeight;
+                setIsPortrait(h > w); // 縦画面かどうかを判定
+                const s = Math.min(w / BASE_WIDTH, h / BASE_HEIGHT);
                 setScale(isNaN(s) || s <= 0 ? 1 : s);
             }, []);
 
@@ -454,8 +458,32 @@
             };
 
             return (
-                <div className="fixed inset-0 bg-slate-900 flex items-center justify-center">
-                    <div ref={containerRef} className="bg-gray-50 shadow-2xl relative overflow-hidden flex flex-col" style={{ width: 1024, height: 768, transform: `scale(${scale})` }}>
+                <div className="fixed inset-0 bg-slate-900 flex items-center justify-center overflow-hidden">
+                    
+                    {/* スマホ縦画面時の回転お願いオーバーレイ */}
+                    {isPortrait && window.innerWidth < 768 && (
+                        <div className="absolute inset-0 z-[999] bg-blue-600 flex flex-col items-center justify-center text-white p-8 text-center">
+                            <Icon name="smartphone" size={80} className="mb-6 animate-pulse" style={{ transform: 'rotate(90deg)' }} />
+                            <h2 className="text-3xl font-black mb-4">画面を横にしてください</h2>
+                            <p className="text-lg font-bold text-blue-100 leading-relaxed">
+                                このアプリは横画面（ランドスケープ）専用です。<br/>
+                                端末を横向きに持ち替えてご利用ください。
+                            </p>
+                        </div>
+                    )}
+
+                    <div 
+                        ref={containerRef} 
+                        className="bg-gray-50 shadow-2xl relative overflow-hidden flex flex-col shrink-0" 
+                        style={{ 
+                            width: BASE_WIDTH, 
+                            height: BASE_HEIGHT, 
+                            minWidth: BASE_WIDTH, 
+                            minHeight: BASE_HEIGHT, 
+                            transform: `scale(${scale})`,
+                            transformOrigin: 'center center'
+                        }}
+                    >
                         
                         {/* Loading Overlay */}
                         {isProcessing && (
